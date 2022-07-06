@@ -9,4 +9,4 @@ Several times a day, it is recommended that multiple client laptops, as well as 
 
 This application is pre-configured to assume an mySQL database named medcamp, accessed by a user medcamp with the password medcamp. It is assumed there is no DNS, so access to the web site is via IP address, and the default configuration is set to 127.0.0.1, via port 8080, so that it fits easier into the configuration of a Turnkey Linux LAMP appliance.
 
-The Medcamp-server project provdes a Debian package to add the medcamp application and database to a Turnkey Linux LAMP server with the minimum of other configuration.
+The Medcamp-server project provides a Debian package to add the medcamp application and database to a Turnkey Linux LAMP server with the minimum of other configuration.
