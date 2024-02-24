@@ -53,7 +53,8 @@ class Medcamp extends CI_Controller {
       $crud->set_table('locations');
       $crud->set_subject('Location');
       $crud->required_fields('location', 'year');
-      $crud->columns('location', 'year');
+      $crud->fields('location', 'year', 'patient_number');
+      $crud->columns('location', 'year', 'patient_number');
       $crud->where('year', $this->year);
 
       $output = $crud->render();
@@ -158,6 +159,10 @@ class Medcamp extends CI_Controller {
       $crud->fields('diagnosis', 'description');
       $crud->display_as('diagnosis', 'Diagnosis');
       $crud->display_as('description', 'Diagnosis Code');
+      
+      $crud->unset_add();
+      $crud->unset_edit();
+      $crud->unset_delete();
 
       $output = $crud->render();
 
@@ -181,11 +186,11 @@ class Medcamp extends CI_Controller {
     }
     //$crud->set_relation_n_n('location', 'location', 'location', 'id', 'id', 'location');
 
-    $crud->columns('id', 'name', 'birth_date', 'age', 'gender', 'race', 'address', 'phone_number', 'card_number', 'location', 'location_patient_number', 'diagnosis', 'referral', 'hospital','department', 'notes');
-    $crud->required_fields('name');
+    $crud->columns('id', 'name', 'birth_date', 'age', 'gender', 'race', 'address', 'phone_number','email', 'card_number', 'location', 'location_patient_number', 'diagnosis', 'referral', 'hospital','department', 'notes');
+    $crud->required_fields('name', 'referral', 'location');
     $crud->set_relation_n_n('diagnosises', 'patient_diagnosis', 'diagnosis', 'patient_id', 'diagnosis_id', 'description', 'priority');
     $crud->unset_columns('diagnosises');
-    $crud->fields('name', 'gender', 'race', 'address', 'phone_number', 'birth_date', 'age', 'card_number', 'location', 'location_patient_number', 'diagnosis', 'diagnosises', 'referral', 'hospital','department', 'notes');
+    $crud->fields('name', 'gender', 'race', 'address', 'phone_number','email', 'birth_date', 'age', 'card_number', 'location', 'location_patient_number', 'diagnosis', 'diagnosises', 'referral', 'hospital','department', 'notes', 'unique_id');
     $crud->field_type('gender', 'dropdown', array('Male' => 'Male', 'Female' => 'Female'));
     $crud->field_type('referral', 'true_false');
     $crud->set_relation('hospital', 'hospitals', 'hospital');
@@ -193,6 +198,7 @@ class Medcamp extends CI_Controller {
     $crud->set_relation('race', 'races', 'race');
     $crud->set_relation('location', 'locations', '{location} {year}', "year = '" . $this->year . "'");
     $crud->change_field_type('location_patient_number', 'invisible');
+    $crud->change_field_type('unique_id', 'invisible');
     $crud->change_field_type('diagnosis', 'invisible');
     //$crud->change_field_type('age','invisible');
     $crud->display_as('birth_date', 'Birth Date');
@@ -202,15 +208,16 @@ class Medcamp extends CI_Controller {
     $crud->display_as('diagnosis_list', 'Diagnosis');
     $crud->display_as('location_patient_number', 'Patient Number');
     $crud->set_subject('Patient');
+    $crud->callback_after_insert(array($this, 'after_patient_insert'));
     $crud->callback_before_insert(array($this, 'before_patient_insert'));
     $crud->callback_before_update(array($this, 'update_diagnosis'));
     $crud->callback_column('diagnosis', array($this, 'wrap_diagnosis'));
     $crud->callback_column('notes', array($this, 'wrap_notes'));
 
-    //$crud->set_lang_string('insert_success_message',
-    //    'Patient has been successfully stored into the database. <script type="text/javascript">
-    //    alert("' .$this->session->userdata('pname').'\r\nPatient number is ' .$this->session->userdata('pnum').'");
-    //    </script>');
+    $crud->set_lang_string('insert_success_message',
+        'Patient has been successfully stored into the database. <script type="text/javascript">
+        alert("' .$this->session->userdata('pname').'\r\nPatient number is ' .$this->session->userdata('pnum').', '.$this->session->userdata('punique').'");
+        </script>');
     $crud->set_lang_string('insert_success_message', 'Your data has been successfully stored into the database.<br/>Please wait while you are redirecting to the list page.
 			<script type="text/javascript">
 			window.location = "' . site_url(strtolower(__CLASS__) . '/' . strtolower(__FUNCTION__)) . '";
@@ -238,32 +245,47 @@ class Medcamp extends CI_Controller {
   }
 
   function wrap_notes($value, $row) {
-    return $value = wordwrap($row->notes, 30, "<br>", true);
+    if (!empty($row->notes)) {
+        return $value = wordwrap($row->notes, 30, "<br>", true);
+    } else {
+        return '';
+    }
   }
 
   function wrap_diagnosis($value, $row) {
-    return $value = wordwrap($row->diagnosis, 50, "<br>", true);
+    if (!empty($row->diagnosis)) {
+        return $value = wordwrap($row->diagnosis, 50, "<br>", true);
+    } else {
+        return '';
+    }
   }
 
-  function before_patient_insert($post_array) {
+  function after_patient_insert($post_array) {
     $post_array = $this->set_patient_number($post_array);
-    $post_array = $this->update_diagnosis($post_array);
     return $post_array;
   }
 
-  function set_patient_number($post_array) {
-    $post_array["location_patient_number"] = $this->Medcamp_model->get_location_patient_number($post_array["location"]);
+  function set_patient_number( $post_array) {
+    $post_array["location_patient_number"] = $this->Medcamp_model->get_location_patient_number($post_array);    
     $this->session->set_userdata('pname', $post_array["name"]);
     $this->session->set_userdata('pnum', $post_array["location_patient_number"]);
     return $post_array;
   }
+  
+  function before_patient_insert($post_array) {
+    $post_array["unique_id"] = uniqid('',true);
+    $this->session->set_userdata('punique', $post_array["unique_id"]);
+    return $this->update_diagnosis($post_array);
+  }
 
   function update_diagnosis($post_array) {
-    $post_array["diagnosis"] = $this->Medcamp_model->get_diagnosis($post_array["diagnosises"]);
+    if (!empty($post_array["diagnosises"]) && is_array($post_array["diagnosises"])) {
+        $post_array["diagnosis"] = $this->Medcamp_model->get_diagnosis($post_array["diagnosises"]);
+    }
     //$now = new DateTime();
     //$birth = new DateTime(str_replace('/','-',$post_array["birth_date"]));
     //$post_array["age"] = $birth->diff($now)->format('%r%y');
-    if (strlen($post_array["age"]) == 0) {
+    if (strlen($post_array["age"]) == 0 && !empty($post_array["birth_date"])) {
       $birthDate = explode("/", $post_array["birth_date"]);
       $post_array["age"] = (date("md", date("U", mktime(0, 0, 0, $birthDate[1], $birthDate[0], $birthDate[2]))) > date("md") ? ((date("Y") - $birthDate[2]) - 1) : (date("Y") - $birthDate[2]));
     }

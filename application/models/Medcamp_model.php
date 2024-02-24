@@ -89,15 +89,18 @@ class Medcamp_model extends CI_Model {
     return $query->result_array();
   }
 
-  function get_location_patient_number($location) {
+  function get_location_patient_number($patientData) {
     $this->db->trans_start();
     $this->db->select('patient_number');
     $this->db->from('locations');
-    $this->db->where('id', $location);
+    $this->db->where('id', $patientData["location"]);
     $patient = $this->db->get()->row()->patient_number;
     $patient += 1;
-    $this->db->where('id', $location);
+    $this->db->where('id', $patientData["location"]);
     $this->db->update('locations', array('patient_number' => $patient));
+    
+    $this->db->where('unique_id',$patientData["unique_id"]);
+    $this->db->update('patients', array('location_patient_number' => $patient));
     $this->db->trans_complete();
     return $patient;
   }

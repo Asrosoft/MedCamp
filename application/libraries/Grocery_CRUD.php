@@ -380,7 +380,7 @@ class grocery_CRUD_Field_Types
 	 */
 	function character_limiter($str, $n = 500, $end_char = '&#8230;')
 	{
-		if (strlen($str) < $n)
+		if (empty($str) || strlen($str) < $n)
 		{
 			return $str;
 		}
@@ -1734,8 +1734,11 @@ class grocery_CRUD_Layout extends grocery_CRUD_Model_Driver
 
 	protected function _trim_export_string($value)
 	{
-		$value = str_replace(array("&nbsp;","&amp;","&gt;","&lt;"),array(" ","&",">","<"),$value);
-		return  strip_tags(str_replace(array("\t","\n","\r"),"",$value));
+            if (empty($value)) {
+                return $value;
+            }
+            $value = str_replace(array("&nbsp;","&amp;","&gt;","&lt;"),array(" ","&",">","<"),$value);
+            return  strip_tags(str_replace(array("\t","\n","\r"),"",$value));
 	}
 
 	protected function _trim_print_string($value)
